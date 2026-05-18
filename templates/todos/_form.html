@@ -3,7 +3,7 @@
 
   <div class="mb-3">
     <label for="id_title" class="form-label">Title</label>
-    <input type="text" name="title" class="form-control {% if form.title.errors %}is-invalid{% endif %}" id="id_title" placeholder="e.g. Buy groceries" value="{{ form.title.value|default_if_none:todo.title|default_if_none:'' }}" required>
+    <input type="text" name="title" class="form-control {% if form.title.errors %}is-invalid{% endif %}" id="id_title" placeholder="e.g. Buy groceries" value="{% if form.title.value %}{{ form.title.value }}{% elif todo %}{{ todo.title }}{% else %}{% endif %}" required>
     {% if form.title.errors %}
       <div class="invalid-feedback">{{ form.title.errors|striptags }}</div>
     {% else %}
@@ -13,14 +13,14 @@
 
   <div class="mb-3">
     <label for="id_description" class="form-label">Description</label>
-    <textarea name="description" class="form-control {% if form.description.errors %}is-invalid{% endif %}" id="id_description" rows="4" placeholder="Details about this todo">{{ form.description.value|default_if_none:todo.description|default_if_none:'' }}</textarea>
+    <textarea name="description" class="form-control {% if form.description.errors %}is-invalid{% endif %}" id="id_description" rows="4" placeholder="Details about this todo">{% if form.description.value %}{{ form.description.value }}{% elif todo %}{{ todo.description }}{% else %}{% endif %}</textarea>
     {% if form.description.errors %}
       <div class="invalid-feedback">{{ form.description.errors|striptags }}</div>
     {% endif %}
   </div>
 
   <div class="mb-4 form-check">
-    <input type="checkbox" name="completed" class="form-check-input" id="id_completed" {% if form.completed.value or todo.completed %}checked{% endif %}>
+    <input type="checkbox" name="completed" class="form-check-input" id="id_completed" {% if form.completed.value %}checked{% elif todo and todo.completed %}checked{% endif %}>
     <label class="form-check-label" for="id_completed">Mark as completed</label>
   </div>
 
