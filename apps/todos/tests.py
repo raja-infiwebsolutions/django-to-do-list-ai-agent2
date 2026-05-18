@@ -13,9 +13,10 @@ class TodoModelTest(TestCase):
         # Generate a per-test random password so no secrets are checked in
         self.TEST_PASSWORD = secrets.token_urlsafe(16)
         User = get_user_model()
-        # create_user handles hashing
+        username_field = User.USERNAME_FIELD
+        # create_user handles hashing and respects custom USERNAME_FIELD
         self.user = User.objects.create_user(
-            username="test@example.com",
+            **{username_field: "test@example.com"},
             email="test@example.com",
             password=self.TEST_PASSWORD,
         )

@@ -8,8 +8,6 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-User = get_user_model()
-
 
 class JWTAuthentication(BaseAuthentication):
     """DRF authentication using JWT tokens in the Authorization header.
@@ -38,16 +36,13 @@ class JWTAuthentication(BaseAuthentication):
         scheme, token = parts
         if scheme.lower() != self.keyword.lower():
             return None
+
         try:
-            try:
-                payload = verify_access_token(token)
-            except ExpiredSignatureError:
-                raise exceptions.AuthenticationFailed("Token has expired")
-            except InvalidTokenError:
-                raise exceptions.AuthenticationFailed("Invalid token")
-        except exceptions.AuthenticationFailed:
-            # Re-raise DRF-specific authentication failures
-            raise
+            payload = verify_access_token(token)
+        except ExpiredSignatureError:
+            raise exceptions.AuthenticationFailed("Token has expired")
+        except InvalidTokenError:
+            raise exceptions.AuthenticationFailed("Invalid token")
         except Exception:
             # Record unexpected internal exception for debugging (no sensitive data)
             logger.exception("Unexpected error during JWT authentication")
@@ -56,6 +51,10 @@ class JWTAuthentication(BaseAuthentication):
         user_id = payload.get("user_id")
         if not user_id:
             raise exceptions.AuthenticationFailed("Invalid token payload.")
+
+        # Defer getting the User model until runtime to avoid AppRegistryNotReady issues
+        User = get_user_model()
+
         try:
             user = User.objects.get(pk=user_id)
         except User.DoesNotExist:
