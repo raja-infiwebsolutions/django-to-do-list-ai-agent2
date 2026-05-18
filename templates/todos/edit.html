@@ -22,7 +22,7 @@
 
         <!-- Delete button triggers modal -->
         <div class="mt-3">
-          <button class="btn btn-outline-danger btn-sm btn-delete" data-id="{{ todo.id }}" data-title="{{ todo.title }}" data-url="{% url 'todos:delete' todo.id %}" data-bs-toggle="modal" data-bs-target="#deleteModal" aria-label="Delete {{ todo.title }}">Delete</button>
+          <button type="button" class="btn btn-outline-danger btn-sm btn-delete" data-id="{{ todo.id }}" data-title="{{ todo.title }}" data-url="{% url 'todos:delete' todo.id %}" data-bs-toggle="modal" data-bs-target="#deleteModal" aria-label="Delete {{ todo.title }}">Delete</button>
         </div>
 
       </div>
