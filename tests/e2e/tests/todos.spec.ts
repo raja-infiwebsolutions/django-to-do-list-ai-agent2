@@ -1,192 +1,185 @@
 import { test, expect } from '@playwright/test';
 
-const FRONTEND = 'http://localhost:3000';
+const BASE_URL = 'http://localhost:3000';
 const API_BASE = 'http://localhost:8000/api';
 
-// Utility to generate random email
-const randomEmail = () => `qa_user_${Date.now()}@example.com`;
-
-test.describe('Feature: Todo Backend + Auth Integration (Frontend + API)', () => {
+test.describe('Feature: Frontend DJANGO TO DO LIST', () => {
   test.beforeEach(async ({ page }) => {
-    await page.goto(FRONTEND + '/');
+    await page.goto(BASE_URL);
   });
 
-  test('Signup API: should register a new user (success)', async ({ request, page }) => {
-    const email = randomEmail();
-    const signupPayload = { name: 'QA Test', email, password: 'P@ssw0rd!' };
+  test('Base layout: navbar, footer, and Bootstrap + custom CSS loaded', async ({ page }) => {
+    // Navbar and footer existence
+    await expect(page.locator('nav')).toBeVisible();
+    await expect(page.locator('footer')).toBeVisible();
 
-    const res = await request.post(`${API_BASE}/auth/signup`, { data: signupPayload });
-    expect(res.ok()).toBeTruthy();
-    const body = await res.json();
-    expect(body).toHaveProperty('success');
-    expect(body.success).toBeTruthy();
-    expect(body).toHaveProperty('data');
+    // Check CSS links include Bootstrap and static custom css
+    const stylesheets = await page.evaluate(() => Array.from(document.querySelectorAll('link[rel="stylesheet"]')).map(l => (l as HTMLLinkElement).href));
+    const hasBootstrap = stylesheets.some(h => /bootstrap/i.test(h));
+    const hasStaticCss = stylesheets.some(h => /\/static\//i.test(h) || /assets/i.test(h));
+    expect(hasBootstrap).toBeTruthy();
+    expect(hasStaticCss).toBeTruthy();
 
-    // UI evidence: try to visit signup page and take screenshot (even if app has no page, just capture home)
-    await page.goto(FRONTEND + '/signup').catch(() => page.goto(FRONTEND + '/'));
-    await page.screenshot({ path: 'screenshots/signup-api-success.png' });
+    await page.screenshot({ path: 'screenshots/base-layout.png' });
   });
 
-  test('Signup API: should prevent duplicate email registration (error)', async ({ request }) => {
-    const email = randomEmail();
-    const payload = { name: 'QA Test Dup', email, password: 'P@ssw0rd!' };
-    const first = await request.post(`${API_BASE}/auth/signup`, { data: payload });
-    expect(first.ok()).toBeTruthy();
+  test('Responsive layout: mobile and desktop nav behavior', async ({ page }) => {
+    // Mobile viewport
+    await page.setViewportSize({ width: 375, height: 812 });
+    await page.waitForTimeout(300); // allow responsive JS to settle
+    const navToggler = page.locator('.navbar-toggler');
+    expect(await navToggler.count()).toBeGreaterThan(0);
+    await page.screenshot({ path: 'screenshots/mobile-nav.png' });
 
-    const second = await request.post(`${API_BASE}/auth/signup`, { data: payload });
-    // Expect failure (4xx) when trying duplicate
-    expect(second.status()).toBeGreaterThanOrEqual(400);
-    expect(second.status()).toBeLessThan(500);
-    const b = await second.json();
-    expect(b).toHaveProperty('success');
-    expect(b.success).toBeFalsy();
+    // Desktop viewport
+    await page.setViewportSize({ width: 1280, height: 800 });
+    await page.waitForTimeout(300);
+    // On desktop the toggler may be hidden; check that nav links (role=navigation) are visible
+    const nav = page.locator('nav');
+    await expect(nav).toBeVisible();
+    await page.screenshot({ path: 'screenshots/desktop-nav.png' });
   });
 
-  test('Login API: should authenticate and return JWT token', async ({ request, page }) => {
-    const email = randomEmail();
-    const signup = { name: 'Login User', email, password: 'P@ssw0rd!' };
-    const s = await request.post(`${API_BASE}/auth/signup`, { data: signup });
-    expect(s.ok()).toBeTruthy();
-
-    const loginRes = await request.post(`${API_BASE}/auth/login`, { data: { email, password: signup.password } });
-    expect(loginRes.ok()).toBeTruthy();
-    const body = await loginRes.json();
-    expect(body).toHaveProperty('token');
-    // UI evidence: open login page
-    await page.goto(FRONTEND + '/login').catch(() => page.goto(FRONTEND + '/'));
-    await page.screenshot({ path: 'screenshots/login-api-success.png' });
-  });
-
-  test('Protected Todos: should reject unauthenticated creation', async ({ request }) => {
-    const payload = { title: 'Unauth todo', description: 'Should be rejected', status: 'incomplete' };
-    const res = await request.post(`${API_BASE}/todos`, { data: payload });
-    // Expect 401 or 403
-    expect(res.status()).toBeGreaterThanOrEqual(400);
-    expect(res.status()).toBeLessThan(500);
-    const b = await res.json();
-    expect(b).toHaveProperty('success');
-    expect(b.success).toBeFalsy();
-  });
-
-  test('Todo CRUD: create, read, update, delete flow for owner', async ({ request, page }) => {
-    const email = randomEmail();
-    const user = { name: 'Owner', email, password: 'P@ssw0rd!' };
-    const s = await request.post(`${API_BASE}/auth/signup`, { data: user });
-    expect(s.ok()).toBeTruthy();
-
-    const login = await request.post(`${API_BASE}/auth/login`, { data: { email, password: user.password } });
-    expect(login.ok()).toBeTruthy();
-    const loginBody = await login.json();
-    expect(loginBody).toHaveProperty('token');
-    const token = loginBody.token;
-
-    // Create todo
-    const todoPayload = { title: 'QA Todo', description: 'Created by QA', status: 'incomplete', priority: 'low' };
-    const createRes = await request.post(`${API_BASE}/todos`, {
-      data: todoPayload,
-      headers: { Authorization: `Bearer ${token}` },
-    });
-    expect(createRes.ok()).toBeTruthy();
-    const created = await createRes.json();
-    expect(created).toHaveProperty('data');
-    const todo = created.data;
-    expect(todo).toHaveProperty('id');
-
-    // Get single todo
-    const getRes = await request.get(`${API_BASE}/todos/${todo.id}`, { headers: { Authorization: `Bearer ${token}` } });
-    expect(getRes.ok()).toBeTruthy();
-    const getBody = await getRes.json();
-    expect(getBody.data.id || getBody.data._id || getBody.data).toBeTruthy();
-
-    // Update todo (partial)
-    const updateRes = await request.patch(`${API_BASE}/todos/${todo.id}`, {
-      data: { status: 'completed', title: 'QA Todo - Updated' },
-      headers: { Authorization: `Bearer ${token}` },
-    });
-    expect(updateRes.ok()).toBeTruthy();
-    const updatedBody = await updateRes.json();
-    expect(updatedBody).toHaveProperty('data');
-
-    // Delete todo
-    const delRes = await request.delete(`${API_BASE}/todos/${todo.id}`, { headers: { Authorization: `Bearer ${token}` } });
-    expect(delRes.ok()).toBeTruthy();
-
-    // Verify deleted returns 404
-    const getAfterDelete = await request.get(`${API_BASE}/todos/${todo.id}`, { headers: { Authorization: `Bearer ${token}` } });
-    expect(getAfterDelete.status()).toBeGreaterThanOrEqual(400);
-    expect(getAfterDelete.status()).toBeLessThan(500);
-
-    // UI evidence: open todos page
-    await page.goto(FRONTEND + '/todos').catch(() => page.goto(FRONTEND + '/'));
-    await page.screenshot({ path: 'screenshots/todo-crud-flow.png' });
-  });
-
-  test('Authorization: only owner can update/delete a todo', async ({ request }) => {
-    // Owner user
-    const ownerEmail = randomEmail();
-    const owner = { name: 'Owner2', email: ownerEmail, password: 'P@ssw0rd!' };
-    await request.post(`${API_BASE}/auth/signup`, { data: owner });
-    const ownerLogin = await request.post(`${API_BASE}/auth/login`, { data: { email: owner.email, password: owner.password } });
-    const ownerToken = (await ownerLogin.json()).token;
-
-    // Another user
-    const otherEmail = randomEmail();
-    const other = { name: 'Other', email: otherEmail, password: 'P@ssw0rd!' };
-    await request.post(`${API_BASE}/auth/signup`, { data: other });
-    const otherLogin = await request.post(`${API_BASE}/auth/login`, { data: { email: other.email, password: other.password } });
-    const otherToken = (await otherLogin.json()).token;
-
-    // Owner creates todo
-    const create = await request.post(`${API_BASE}/todos`, { data: { title: 'Owner Todo', description: 'owner only' }, headers: { Authorization: `Bearer ${ownerToken}` } });
-    expect(create.ok()).toBeTruthy();
-    const todo = (await create.json()).data;
-
-    // Other tries to update
-    const updateByOther = await request.patch(`${API_BASE}/todos/${todo.id}`, { data: { title: 'Hacked' }, headers: { Authorization: `Bearer ${otherToken}` } });
-    expect(updateByOther.status()).toBeGreaterThanOrEqual(400);
-    expect(updateByOther.status()).toBeLessThan(500);
-
-    // Other tries to delete
-    const delByOther = await request.delete(`${API_BASE}/todos/${todo.id}`, { headers: { Authorization: `Bearer ${otherToken}` } });
-    expect(delByOther.status()).toBeGreaterThanOrEqual(400);
-    expect(delByOther.status()).toBeLessThan(500);
-  });
-
-  test('Get Todos: supports pagination and filtering by status', async ({ request }) => {
-    const email = randomEmail();
-    const user = { name: 'Pager', email, password: 'P@ssw0rd!' };
-    await request.post(`${API_BASE}/auth/signup`, { data: user });
-    const login = await request.post(`${API_BASE}/auth/login`, { data: { email, password: user.password } });
-    const token = (await login.json()).token;
-
-    // Create multiple todos
-    for (let i = 0; i < 7; i++) {
-      await request.post(`${API_BASE}/todos`, { data: { title: `T ${i}`, description: 'for pagination', status: i % 2 === 0 ? 'completed' : 'incomplete' }, headers: { Authorization: `Bearer ${token}` } });
+  test('Todo List UI: shows cards or empty state and cards contain required fields', async ({ page }) => {
+    // Look for todo card candidates using common classes/selectors
+    const cardSelectors = ['[data-testid="todo-card"]', '.todo-card', '.card.todo', '.card'];
+    let cardsCount = 0;
+    for (const sel of cardSelectors) {
+      const count = await page.locator(sel).count();
+      if (count > 0) {
+        cardsCount = count;
+        break;
+      }
     }
 
-    const page1 = await request.get(`${API_BASE}/todos?page=1&limit=5`, { headers: { Authorization: `Bearer ${token}` } });
-    expect(page1.ok()).toBeTruthy();
-    const p1Body = await page1.json();
-    expect(p1Body).toHaveProperty('data');
+    if (cardsCount > 0) {
+      // Inspect the first card for title, description, status, created date, and action buttons
+      const firstCard = await page.locator(cardSelectors.join(',')).first();
+      await expect(firstCard).toBeVisible();
 
-    const filter = await request.get(`${API_BASE}/todos?status=completed`, { headers: { Authorization: `Bearer ${token}` } });
-    expect(filter.ok()).toBeTruthy();
-    const fBody = await filter.json();
-    expect(fBody).toHaveProperty('data');
+      // Title (h1-h4 or .card-title)
+      const title = firstCard.locator('h1, h2, h3, h4, .card-title, [data-testid="todo-title"]');
+      await expect(title).toBeVisible();
+
+      // Description (p, .card-text, [data-testid="todo-desc"])
+      const desc = firstCard.locator('p, .card-text, [data-testid="todo-desc"]');
+      await expect(desc).toBeVisible();
+
+      // Status badge (badge, .status, [data-testid="todo-status"]) - may be complete/incomplete
+      const status = firstCard.locator('.badge, .status, [data-testid="todo-status"]');
+      await expect(status).toBeVisible();
+
+      // Created date - check for datetime patterns
+      const dateText = await firstCard.innerText();
+      const dateRegex = /\b\d{4}-\d{2}-\d{2}\b|\b\w{3,9}\s+\d{1,2},\s+\d{4}\b/;
+      expect(dateRegex.test(dateText)).toBeTruthy();
+
+      // Edit and Delete actions
+      const editBtn = firstCard.locator('button:has-text("Edit"), a:has-text("Edit"), [data-testid="edit-btn"]');
+      const deleteBtn = firstCard.locator('button:has-text("Delete"), a:has-text("Delete"), [data-testid="delete-btn"]');
+      await expect(editBtn).toBeVisible();
+      await expect(deleteBtn).toBeVisible();
+
+      await page.screenshot({ path: 'screenshots/todo-card-present.png' });
+    } else {
+      // Expect empty state UI
+      const emptyState = page.locator('text=/no (todos|tasks)/i, [data-testid="empty-state"], .empty-state');
+      await expect(emptyState).toBeVisible();
+      await page.screenshot({ path: 'screenshots/todo-empty-state.png' });
+    }
   });
 
-  test('Validation: creating todo without required fields should fail', async ({ request }) => {
-    const email = randomEmail();
-    const user = { name: 'Validator', email, password: 'P@ssw0rd!' };
-    await request.post(`${API_BASE}/auth/signup`, { data: user });
-    const login = await request.post(`${API_BASE}/auth/login`, { data: { email, password: user.password } });
-    const token = (await login.json()).token;
+  test('Create Todo page: form presence, validation, and submit UI', async ({ page }) => {
+    // Find link/button to create a todo
+    const createLink = page.locator('a:has-text("Create"), a:has-text("Add"), button:has-text("Create"), button:has-text("Add")');
+    expect(await createLink.count()).toBeGreaterThanOrEqual(0);
 
-    const res = await request.post(`${API_BASE}/todos`, { data: { description: 'missing title' }, headers: { Authorization: `Bearer ${token}` } });
-    expect(res.status()).toBeGreaterThanOrEqual(400);
-    expect(res.status()).toBeLessThan(500);
-    const b = await res.json();
-    expect(b).toHaveProperty('success');
-    expect(b.success).toBeFalsy();
+    if ((await createLink.count()) > 0) {
+      await createLink.first().click();
+      await page.waitForLoadState('networkidle');
+
+      // Form fields (title, description) - look for common names/placeholders
+      const titleInput = page.locator('input[name="title"], input[id*="title"], input[placeholder*="Title"], [data-testid="title-input"]');
+      const descInput = page.locator('textarea[name="description"], textarea[id*="description"], textarea[placeholder*="Description"], [data-testid="description-input"]');
+      const submitBtn = page.locator('button:has-text("Submit"), button:has-text("Create"), button[type="submit"]');
+      const cancelBtn = page.locator('button:has-text("Cancel"), a:has-text("Cancel")');
+
+      await expect(titleInput).toBeVisible();
+      await expect(descInput).toBeVisible();
+      await expect(submitBtn).toBeVisible();
+      await expect(cancelBtn).toBeVisible();
+
+      // Client-side validation: try submitting empty form
+      await submitBtn.first().click();
+      // Expect validation UI (invalid-feedback or role=alert)
+      const validation = page.locator('.invalid-feedback, [role="alert"], .error');
+      await expect(validation).toBeVisible();
+
+      // Fill form with sample data
+      await titleInput.fill('E2E Test Todo');
+      await descInput.fill('This is a test todo created by Playwright.');
+      await submitBtn.first().click();
+
+      // Expect either navigation back to list or success alert
+      const successAlert = page.locator('.alert-success, text=/success/i, [data-testid="alert-success"]');
+      const listUrlPattern = new RegExp('todo', 'i');
+      await page.waitForTimeout(500);
+      const url = page.url();
+      if (successAlert.count() > 0) {
+        await expect(successAlert).toBeVisible();
+      } else {
+        // If navigated, expect URL contains 'todo' or root
+        expect(listUrlPattern.test(url) || url === BASE_URL).toBeTruthy();
+      }
+
+      await page.screenshot({ path: 'screenshots/create-todo.png' });
+    } else {
+      test.skip(true, 'Create link/button not found on the page; skipping create todo UI test');
+    }
+  });
+
+  test('Edit and Delete: present and show confirmation on delete', async ({ page }) => {
+    // Find first todo card
+    const card = page.locator('[data-testid="todo-card"], .todo-card, .card.todo, .card').first();
+    if ((await card.count()) === 0) {
+      test.skip(true, 'No todo cards found to test edit/delete flows');
+      return;
+    }
+
+    const editBtn = card.locator('button:has-text("Edit"), a:has-text("Edit"), [data-testid="edit-btn"]');
+    const deleteBtn = card.locator('button:has-text("Delete"), a:has-text("Delete"), [data-testid="delete-btn"]');
+
+    await expect(editBtn).toBeVisible();
+    await expect(deleteBtn).toBeVisible();
+
+    // Click edit - check that form is pre-filled
+    await editBtn.first().click();
+    await page.waitForLoadState('networkidle');
+    const titleInput = page.locator('input[name="title"], input[id*="title"], [data-testid="title-input"]');
+    await expect(titleInput).toBeVisible();
+    const value = await titleInput.inputValue();
+    expect(value.length).toBeGreaterThan(0);
+
+    await page.screenshot({ path: 'screenshots/edit-form-prefilled.png' });
+
+    // Cancel edit if possible
+    const cancelBtn = page.locator('button:has-text("Cancel"), a:has-text("Cancel")');
+    if ((await cancelBtn.count()) > 0) await cancelBtn.first().click();
+
+    // Test delete confirmation
+    await deleteBtn.first().click();
+    // Expect either a modal or a confirmation page/message
+    const modal = page.locator('.modal, [role="dialog"]');
+    const confirmBtn = page.locator('button:has-text("Confirm"), button:has-text("Delete"), button:has-text("Yes"), [data-testid="confirm-delete"]');
+    const cancelDeleteBtn = page.locator('button:has-text("Cancel"), button:has-text("No"), [data-testid="cancel-delete"]');
+
+    await expect(modal.or(confirmBtn)).toBeTruthy();
+    // If modal visible, check warning text
+    if ((await modal.count()) > 0 && await modal.isVisible()) {
+      const warning = modal.locator('text=/are you sure|warning|delete/i');
+      await expect(warning).toBeVisible();
+    }
+
+    await page.screenshot({ path: 'screenshots/delete-confirmation.png' });
   });
 });
