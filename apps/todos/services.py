@@ -1,5 +1,5 @@
 from typing import Any, Dict, Optional
-from datetime import date
+from datetime import date, datetime
 from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
 from django.db import transaction
 from django.core.exceptions import PermissionDenied, ValidationError
@@ -11,14 +11,17 @@ from .models import Todo
 def _coerce_bool(val: Any) -> Optional[bool]:
     """Normalize various truthy/falsey representations to Python bool.
 
-    Accepts booleans, integers and common string values.
+    Accepts booleans, integers (0 or 1) and common string values.
     Returns True/False for recognized values, and None for unrecognized inputs
     so callers can surface validation errors instead of silently coercing.
     """
     if isinstance(val, bool):
         return val
     if isinstance(val, int):
-        return bool(val)
+        # accept only 0/1 to avoid surprising truthiness for other ints
+        if val in (0, 1):
+            return bool(val)
+        return None
     if isinstance(val, str):
         v = val.strip().lower()
         if v in ("1", "true", "yes", "y", "t"):
@@ -31,13 +34,26 @@ def _coerce_bool(val: Any) -> Optional[bool]:
 def _parse_due_date(val: Any) -> Optional[date]:
     """Parse a date string or pass through a date object.
 
-    Returns a date object or None. Raises ValidationError for invalid string formats.
+    Returns a date object or None. Raises ValidationError for invalid inputs.
+    Accepts:
+      - None -> None
+      - datetime.date -> returned as-is
+      - datetime.datetime -> converted to date
+      - str in ISO YYYY-MM-DD -> parsed to date
+    Any other type will raise ValidationError.
     """
     if val is None:
         return None
-    # If it's already a date/datetime, allow model validation to handle it
-    if not isinstance(val, str):
+    # If it's already a date, return it
+    if isinstance(val, date) and not isinstance(val, datetime):
         return val
+    # If it's a datetime, convert to date
+    if isinstance(val, datetime):
+        return val.date()
+    # If it's not a string at this point, it's invalid
+    if not isinstance(val, str):
+        raise ValidationError({"due_date": "Invalid date value. Expected YYYY-MM-DD or a date object."})
+
     parsed = parse_date(val)
     if parsed is None:
         raise ValidationError({"due_date": "Invalid date format. Expected YYYY-MM-DD."})
@@ -215,49 +231,49 @@ class TodoService:
                 coerced = _coerce_bool(value)
                 if coerced is None:
                     raise ValidationError({"completed": "Invalid boolean value."})
-                if getattr(todo, "completed", None) != coerced:
-                    setattr(todo, "completed", coerced)
-                    dirty = True
-            elif key == "due_date":
-                parsed = _parse_due_date(value)
-                if getattr(todo, "due_date", None) != parsed:
-                    setattr(todo, "due_date", parsed)
+                if todo.completed != coerced:
+                    todo.completed = coerced
                     dirty = True
             elif key == "priority":
                 pr = _validate_priority(value)
-                if getattr(todo, "priority", None) != pr:
-                    setattr(todo, "priority", pr)
+                if todo.priority != pr:
+                    todo.priority = pr
+                    dirty = True
+            elif key == "due_date":
+                dd = _parse_due_date(value)
+                if todo.due_date != dd:
+                    todo.due_date = dd
                     dirty = True
             elif key == "title":
-                if value is None or (isinstance(value, str) and value.strip() == ""):
-                    raise ValidationError({"title": "This field may not be blank."})
-                if getattr(todo, "title", None) != value:
-                    setattr(todo, "title", value)
+                if not value:
+                    raise ValidationError({"title": "This field may not be empty."})
+                if todo.title != value:
+                    todo.title = value
                     dirty = True
             elif key == "description":
                 if value is None:
                     value = ""
-                if getattr(todo, "description", None) != value:
-                    setattr(todo, "description", value)
+                if todo.description != value:
+                    todo.description = value
                     dirty = True
 
         if dirty:
-            # validate and save
+            # Validate model-level constraints
             todo.full_clean()
             todo.save()
-
         return todo
 
     @staticmethod
     @transaction.atomic
     def delete_todo(user: Any, todo_id: Any) -> None:
         """
-        Delete a todo that belongs to the given user. Raises Todo.DoesNotExist if not found.
+        Delete a todo owned by the provided user. Raises PermissionDenied for unauthenticated
+        access and Todo.DoesNotExist if not found. This method performs an ownership
+        restricted lookup to avoid leaking existence of other users' todos.
         """
         if not getattr(user, "is_authenticated", False):
             raise PermissionDenied("Authentication required")
 
-        todo = Todo.objects.select_for_update().get(pk=todo_id, user=user)
-        # delete the instance
+        todo = Todo.objects.get(pk=todo_id, user=user)
         todo.delete()
-        return None
+
