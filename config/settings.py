@@ -1,14 +1,35 @@
 import os
 from pathlib import Path
-from decouple import config
+from django.core.exceptions import ImproperlyConfigured
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-SECRET_KEY = os.environ.get("DJANGO_SECRET_KEY", "unsafe-secret-for-dev")
-
+# DEBUG should be determined early
 DEBUG = os.environ.get("DEBUG", "1") == "1"
 
-ALLOWED_HOSTS = ["*"]
+# SECRET_KEY must be provided via environment in production
+SECRET_KEY = os.environ.get("DJANGO_SECRET_KEY")
+if not SECRET_KEY:
+    if DEBUG:
+        # use a clearly development-only fallback when DEBUG=True
+        SECRET_KEY = "unsafe-dev-secret"
+    else:
+        raise ImproperlyConfigured(
+            "DJANGO_SECRET_KEY environment variable is required in production"
+        )
+
+# ALLOWED_HOSTS should not default to a permissive wildcard in production
+_allowed_hosts_env = os.environ.get("ALLOWED_HOSTS", "")
+if _allowed_hosts_env:
+    ALLOWED_HOSTS = [h.strip() for h in _allowed_hosts_env.split(",") if h.strip()]
+else:
+    # In development, allow localhost variants; in production require explicit setting
+    ALLOWED_HOSTS = ["localhost", "127.0.0.1"] if DEBUG else []
+
+if not DEBUG and not ALLOWED_HOSTS:
+    raise ImproperlyConfigured(
+        "ALLOWED_HOSTS must be set in production via the ALLOWED_HOSTS environment variable"
+    )
 
 INSTALLED_APPS = [
     "django.contrib.admin",
@@ -92,6 +113,6 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": (
-        "rest_framework.authentication.TokenAuthentication",
+        "authentication.jwt_auth.JWTAuthentication",
     ),
 }
