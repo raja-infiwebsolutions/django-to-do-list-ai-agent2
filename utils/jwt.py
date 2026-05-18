@@ -7,10 +7,11 @@ from django.core.exceptions import ImproperlyConfigured
 # Use a dedicated JWT secret separate from Django SECRET_KEY. Require it in production.
 JWT_SECRET = getattr(settings, "JWT_SECRET", None)
 if not JWT_SECRET:
-    if getattr(settings, "DEBUG", True):
-        # For development: prefer environment override or reuse Django SECRET_KEY; if neither
-        # exists, generate a runtime-only secret so no secret is committed to source.
-        JWT_SECRET = os.environ.get("JWT_SECRET") or getattr(settings, "SECRET_KEY", None)
+    # Treat missing DEBUG as False by default to avoid accidentally using dev fallbacks.
+    if getattr(settings, "DEBUG", False):
+        # For development: prefer explicit environment override; if not provided,
+        # generate a runtime-only secret so no secret is committed to source.
+        JWT_SECRET = os.environ.get("JWT_SECRET")
         if not JWT_SECRET:
             # Runtime-only secret; tokens will be invalidated on process restart which
             # is acceptable for local development.
