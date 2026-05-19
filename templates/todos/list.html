@@ -2,31 +2,91 @@
 {% block title %}Todos - List{% endblock %}
 
 {% block content %}
-<div class="d-flex justify-content-between align-items-center mb-4">
-  <h1 class="h3 mb-0">Your Todos</h1>
-  <a href="{% url 'todos:create' %}" class="btn btn-primary"><i class="bi bi-plus-lg me-1"></i> New Todo</a>
+<div class="mb-4">
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <h1 class="h3 mb-0"><i class="bi bi-list-task me-2"></i>Your Todos</h1>
+    <a href="{% url 'todos:create' %}" class="btn btn-primary">
+      <i class="bi bi-plus-lg me-1"></i> New Todo
+    </a>
+  </div>
+
+  <!-- Filter buttons -->
+  <div class="btn-group mb-3" role="group" aria-label="Filter todos">
+    <a href="{% url 'todos:list' %}" class="btn btn-outline-secondary {% if not status_filter and not completed_filter %}active{% endif %}">
+      All
+    </a>
+    <a href="{% url 'todos:list' %}?status=pending" class="btn btn-outline-secondary {% if status_filter == 'pending' %}active{% endif %}">
+      Pending
+    </a>
+    <a href="{% url 'todos:list' %}?status=in_progress" class="btn btn-outline-secondary {% if status_filter == 'in_progress' %}active{% endif %}">
+      In Progress
+    </a>
+    <a href="{% url 'todos:list' %}?completed=false" class="btn btn-outline-secondary {% if completed_filter == 'false' %}active{% endif %}">
+      Incomplete
+    </a>
+    <a href="{% url 'todos:list' %}?completed=true" class="btn btn-outline-secondary {% if completed_filter == 'true' %}active{% endif %}">
+      Completed
+    </a>
+  </div>
 </div>
 
-{% if todos and todos|length > 0 %}
+{% if todos %}
   <div class="row g-3">
     {% for todo in todos %}
       <div class="col-12 col-sm-6 col-lg-4">
-        <div class="card h-100 todo-card shadow-sm">
+        <div class="card h-100 todo-card shadow-sm {% if todo.completed %}opacity-75{% endif %}">
           <div class="card-body d-flex flex-column">
+            <!-- Todo header -->
             <div class="d-flex justify-content-between align-items-start mb-2">
-              <h5 class="card-title mb-0">{{ todo.title }}</h5>
-              {% if todo.completed %}
-                <span class="badge bg-success">Completed</span>
-              {% else %}
-                <span class="badge bg-secondary">Pending</span>
-              {% endif %}
+              <h5 class="card-title mb-0 {% if todo.completed %}text-decoration-line-through text-muted{% endif %}">
+                {{ todo.title }}
+              </h5>
+              <div class="ms-2">
+                <span class="badge bg-{% if todo.status == 'completed' %}success{% elif todo.status == 'in_progress' %}info{% else %}secondary{% endif %}">
+                  {{ todo.get_status_display }}
+                </span>
+                <span class="badge bg-{% if todo.priority == 'high' %}danger{% elif todo.priority == 'medium' %}warning{% else %}success{% endif %} ms-1">
+                  {{ todo.get_priority_display }}
+                </span>
+              </div>
             </div>
-            <p class="card-text text-muted small mb-3">{{ todo.description|default:"No description"|truncatechars:120 }}</p>
-            <div class="mt-auto d-flex justify-content-between align-items-center">
-              <small class="text-muted">Created: {{ todo.created_at|date:"M j, Y" }}</small>
-              <div>
-                <a href="{% url 'todos:edit' todo.id %}" class="btn btn-sm btn-outline-primary me-1" aria-label="Edit {{ todo.title }}"><i class="bi bi-pencil-fill"></i></a>
-                <button class="btn btn-sm btn-outline-danger btn-delete" data-id="{{ todo.id }}" data-title="{{ todo.title }}" aria-label="Delete {{ todo.title }}"><i class="bi bi-trash-fill"></i></button>
+
+            <!-- Description -->
+            {% if todo.description %}
+              <p class="card-text text-muted small mb-2">
+                {{ todo.description|truncatechars:100 }}
+              </p>
+            {% endif %}
+
+            <!-- Due date -->
+            {% if todo.due_date %}
+              <small class="text-muted mb-3">
+                <i class="bi bi-calendar-event me-1"></i>
+                Due: <strong>{{ todo.due_date|date:"M j, Y" }}</strong>
+              </small>
+            {% endif %}
+
+            <!-- Footer with actions -->
+            <div class="mt-auto pt-2 border-top">
+              <div class="d-flex justify-content-between align-items-center">
+                <small class="text-muted">
+                  Created: {{ todo.created_at|date:"M j, Y" }}
+                </small>
+                <div class="btn-group btn-group-sm" role="group" aria-label="Todo actions">
+                  <button type="button" class="btn btn-outline-success btn-toggle-todo" data-id="{{ todo.id }}" title="Toggle completion" data-completed="{{ todo.completed|lower }}">
+                    {% if todo.completed %}
+                      <i class="bi bi-check-circle-fill"></i>
+                    {% else %}
+                      <i class="bi bi-circle"></i>
+                    {% endif %}
+                  </button>
+                  <a href="{% url 'todos:edit' todo.id %}" class="btn btn-outline-primary" title="Edit">
+                    <i class="bi bi-pencil-fill"></i>
+                  </a>
+                  <button type="button" class="btn btn-outline-danger btn-delete-todo" data-id="{{ todo.id }}" title="Delete">
+                    <i class="bi bi-trash-fill"></i>
+                  </button>
+                </div>
               </div>
             </div>
           </div>
@@ -35,19 +95,94 @@
     {% endfor %}
   </div>
 {% else %}
+  <!-- Empty state -->
   <div class="card shadow-sm text-center py-5">
     <div class="card-body">
-      <i class="bi bi-list-task display-4 text-muted"></i>
+      <i class="bi bi-inbox display-4 text-muted"></i>
       <h3 class="mt-3">No todos yet</h3>
-      <p class="text-muted">Get started by creating your first todo item.</p>
-      <a href="{% url 'todos:create' %}" class="btn btn-lg btn-primary mt-2"><i class="bi bi-plus-lg me-1"></i> Create Todo</a>
+      <p class="text-muted mb-3">{% if status_filter or completed_filter %}No todos match your filter. Try adjusting your search.{% else %}Get started by creating your first todo item.{% endif %}</p>
+      <a href="{% url 'todos:create' %}" class="btn btn-lg btn-primary">
+        <i class="bi bi-plus-lg me-1"></i> Create Your First Todo
+      </a>
     </div>
   </div>
 {% endif %}
 
 <!-- Delete confirmation modal -->
-<div class="modal fade" id="deleteModal" tabindex="-1" aria-labelledby="deleteModalLabel" aria-hidden="true">
-  <div class="modal-dialog modal-dialog-centered">
+{% include 'partials/delete_modal.html' %}
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Handle todo toggle (mark complete/incomplete)
+document.querySelectorAll('.btn-toggle-todo').forEach(btn => {
+  btn.addEventListener('click', async function(e) {
+    e.preventDefault();
+    const todoId = this.dataset.id;
+    const url = `/todos/${todoId}/toggle/`;
+    
+    try {
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]')?.value || '',
+          'X-Requested-With': 'XMLHttpRequest',
+        },
+      });
+      
+      if (response.ok) {
+        // Reload the page to reflect changes
+        location.reload();
+      }
+    } catch (error) {
+      console.error('Error toggling todo:', error);
+    }
+  });
+});
+
+// Handle todo delete
+document.querySelectorAll('.btn-delete-todo').forEach(btn => {
+  btn.addEventListener('click', function(e) {
+    e.preventDefault();
+    const todoId = this.dataset.id;
+    const modal = document.getElementById('deleteModal');
+    if (modal) {
+      modal.todoId = todoId;
+      const bsModal = new bootstrap.Modal(modal);
+      bsModal.show();
+    }
+  });
+});
+
+// Confirm delete from modal
+const deleteForm = document.getElementById('deleteForm');
+if (deleteForm) {
+  deleteForm.addEventListener('submit', async function(e) {
+    e.preventDefault();
+    const modal = document.getElementById('deleteModal');
+    const todoId = modal.todoId;
+    const url = `/todos/${todoId}/delete/`;
+    
+    try {
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]')?.value || '',
+          'X-Requested-With': 'XMLHttpRequest',
+        },
+      });
+      
+      if (response.ok) {
+        location.reload();
+      }
+    } catch (error) {
+      console.error('Error deleting todo:', error);
+    }
+  });
+}
+</script>
+{% endblock %}
     <div class="modal-content">
       <form method="post" id="deleteForm">
         {% csrf_token %}

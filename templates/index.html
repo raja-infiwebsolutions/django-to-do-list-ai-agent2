@@ -1,0 +1,81 @@
+{% extends 'base.html' %}
+{% load static %}
+{% block title %}Todo App - Manage Your Tasks{% endblock %}
+
+{% block content %}
+<div class="row align-items-center py-5">
+  <div class="col-lg-6 text-center text-lg-start mb-4 mb-lg-0">
+    <h1 class="display-4 fw-bold mb-3">
+      <i class="bi bi-check2-square text-primary me-2"></i>
+      Organize Your Tasks
+    </h1>
+    <p class="lead text-muted mb-4">
+      A simple, clean, and intuitive task management application to help you stay organized and productive.
+    </p>
+    <div class="d-flex gap-2 justify-content-center justify-content-lg-start">
+      <a href="{% url 'auth:signup' %}" class="btn btn-primary btn-lg">
+        <i class="bi bi-person-plus me-2"></i>Get Started
+      </a>
+      <a href="{% url 'auth:login' %}" class="btn btn-outline-primary btn-lg">
+        <i class="bi bi-box-arrow-in-right me-2"></i>Sign In
+      </a>
+    </div>
+  </div>
+  
+  <div class="col-lg-6">
+    <div class="text-center">
+      <svg xmlns="http://www.w3.org/2000/svg" width="300" height="300" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="text-primary opacity-25">
+        <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
+        <polyline points="9 22 9 12 15 12 15 22"></polyline>
+      </svg>
+      <div class="mt-4">
+        <p class="text-muted">Ready to organize your work?</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Features section -->
+<div class="row g-4 mt-5">
+  <div class="col-md-4">
+    <div class="card shadow-sm h-100 text-center">
+      <div class="card-body">
+        <i class="bi bi-lightning-charge text-primary display-4 mb-3"></i>
+        <h5 class="card-title">Quick & Easy</h5>
+        <p class="card-text text-muted">Create, manage, and track todos with just a few clicks</p>
+      </div>
+    </div>
+  </div>
+  
+  <div class="col-md-4">
+    <div class="card shadow-sm h-100 text-center">
+      <div class="card-body">
+        <i class="bi bi-shield-check text-success display-4 mb-3"></i>
+        <h5 class="card-title">Secure</h5>
+        <p class="card-text text-muted">Your data is protected and only visible to you</p>
+      </div>
+    </div>
+  </div>
+  
+  <div class="col-md-4">
+    <div class="card shadow-sm h-100 text-center">
+      <div class="card-body">
+        <i class="bi bi-graph-up text-info display-4 mb-3"></i>
+        <h5 class="card-title">Track Progress</h5>
+        <p class="card-text text-muted">View statistics and monitor your productivity</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- CTA section -->
+<div class="card bg-primary text-white mt-5">
+  <div class="card-body text-center py-5">
+    <h4 class="card-title mb-3">Ready to get started?</h5>
+    <p class="lead mb-4">Create your account now and start managing your tasks today</p>
+    <a href="{% url 'auth:signup' %}" class="btn btn-light btn-lg">
+      <i class="bi bi-person-plus me-2"></i>Create Free Account
+    </a>
+  </div>
+</div>
+{% endblock %}

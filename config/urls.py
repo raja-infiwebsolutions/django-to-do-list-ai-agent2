@@ -1,10 +1,14 @@
 from django.contrib import admin
 from django.urls import path, include
+from django.views.generic import RedirectView
 
 urlpatterns = [
+    # Django admin
     path("admin/", admin.site.urls),
-    path("api/auth/signup/", include(([
-        path("", include('apps.todos.urls'))
-    ], 'auth'))),
-    # The todos app exposes viewsets via REST framework router in apps/todos/urls.py when implemented
+    
+    # Web and API routes
+    path("", include("apps.todos.urls")),
+    
+    # Redirect root to todos list
+    path("home/", RedirectView.as_view(url='/todos/', permanent=False)),
 ]

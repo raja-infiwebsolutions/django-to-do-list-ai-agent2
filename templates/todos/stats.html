@@ -1,0 +1,86 @@
+{% extends 'base.html' %}
+{% block title %}Todo Statistics{% endblock %}
+
+{% block content %}
+<div class="container">
+  <div class="d-flex justify-content-between align-items-center mb-4">
+    <h1 class="h3 mb-0"><i class="bi bi-graph-up me-2"></i>Your Statistics</h1>
+    <a href="{% url 'todos:list' %}" class="btn btn-secondary">
+      <i class="bi bi-arrow-left me-1"></i>Back to Todos
+    </a>
+  </div>
+
+  <div class="row g-3">
+    <!-- Total todos card -->
+    <div class="col-12 col-md-4">
+      <div class="card shadow-sm">
+        <div class="card-body text-center">
+          <div class="display-4 text-primary mb-2">{{ total }}</div>
+          <h5 class="card-title">Total Todos</h5>
+          <p class="text-muted mb-0">All tasks in your list</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Completed todos card -->
+    <div class="col-12 col-md-4">
+      <div class="card shadow-sm">
+        <div class="card-body text-center">
+          <div class="display-4 text-success mb-2">{{ completed }}</div>
+          <h5 class="card-title">Completed</h5>
+          <p class="text-muted mb-0">
+            {% if total > 0 %}
+              {{ completed|add:"0" }}% complete
+            {% else %}
+              No completed tasks
+            {% endif %}
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Pending todos card -->
+    <div class="col-12 col-md-4">
+      <div class="card shadow-sm">
+        <div class="card-body text-center">
+          <div class="display-4 text-warning mb-2">{{ pending }}</div>
+          <h5 class="card-title">Pending</h5>
+          <p class="text-muted mb-0">Tasks to complete</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Progress bar -->
+  {% if total > 0 %}
+    <div class="card shadow-sm mt-4">
+      <div class="card-body">
+        <h5 class="card-title">Progress</h5>
+        <div class="progress" style="height: 25px;">
+          <div class="progress-bar bg-success" role="progressbar" style="width: {{ completed|add:"0"|mul:100|div:total }}%" aria-valuenow="{{ completed }}" aria-valuemin="0" aria-valuemax="{{ total }}">
+            {{ completed|add:"0"|mul:100|div:total|floatformat:0 }}%
+          </div>
+        </div>
+        <p class="text-muted small mt-2 mb-0">
+          You have completed {{ completed }} out of {{ total }} todos
+        </p>
+      </div>
+    </div>
+  {% else %}
+    <div class="alert alert-info mt-4" role="alert">
+      <i class="bi bi-info-circle me-2"></i>
+      You haven't created any todos yet. <a href="{% url 'todos:create' %}">Create your first todo</a> to start tracking your tasks!
+    </div>
+  {% endif %}
+
+  <!-- Quick actions -->
+  <div class="mt-4 text-center">
+    <a href="{% url 'todos:create' %}" class="btn btn-primary">
+      <i class="bi bi-plus-lg me-1"></i> Create New Todo
+    </a>
+    <a href="{% url 'todos:list' %}" class="btn btn-outline-secondary ms-2">
+      <i class="bi bi-list-task me-1"></i> View All Todos
+    </a>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,89 @@
+{% extends 'base.html' %}
+{% load static %}
+{% block title %}Login - Todo App{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center mt-5">
+  <div class="col-12 col-sm-10 col-md-8 col-lg-5">
+    <div class="card shadow-lg border-0">
+      <div class="card-body p-5">
+        <div class="text-center mb-4">
+          <h1 class="h4 fw-bold">Login</h1>
+          <p class="text-muted mb-0">Sign in to access your todos</p>
+        </div>
+
+        <!-- Display error messages -->
+        {% if messages %}
+          {% for message in messages %}
+            <div class="alert alert-{{ message.tags|default:'info' }} alert-dismissible fade show" role="alert">
+              {{ message }}
+              <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+          {% endfor %}
+        {% endif %}
+
+        <!-- Display form errors -->
+        {% if form.non_field_errors %}
+          <div class="alert alert-danger alert-dismissible fade show" role="alert">
+            {% for error in form.non_field_errors %}
+              <div>{{ error }}</div>
+            {% endfor %}
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+          </div>
+        {% endif %}
+
+        <!-- Login form -->
+        <form method="post" novalidate>
+          {% csrf_token %}
+
+          <!-- Email field -->
+          <div class="mb-3">
+            <label for="{{ form.email.id_for_label }}" class="form-label">Email Address</label>
+            {{ form.email }}
+            {% if form.email.errors %}
+              <div class="invalid-feedback d-block">
+                {% for error in form.email.errors %}
+                  <span>{{ error }}</span>
+                {% endfor %}
+              </div>
+            {% endif %}
+          </div>
+
+          <!-- Password field -->
+          <div class="mb-4">
+            <label for="{{ form.password.id_for_label }}" class="form-label">Password</label>
+            {{ form.password }}
+            {% if form.password.errors %}
+              <div class="invalid-feedback d-block">
+                {% for error in form.password.errors %}
+                  <span>{{ error }}</span>
+                {% endfor %}
+              </div>
+            {% endif %}
+          </div>
+
+          <!-- Submit button -->
+          <button type="submit" class="btn btn-primary btn-lg w-100 mb-3">
+            <i class="bi bi-box-arrow-in-right me-2"></i>Sign In
+          </button>
+        </form>
+
+        <!-- Signup link -->
+        <div class="text-center">
+          <p class="text-muted mb-0">
+            Don't have an account?
+            <a href="{% url 'auth:signup' %}" class="fw-bold text-decoration-none">Create one now</a>
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Footer text -->
+    <div class="text-center mt-4">
+      <p class="text-muted small">
+        <i class="bi bi-shield-check"></i> Your data is secure with us
+      </p>
+    </div>
+  </div>
+</div>
+{% endblock %}
