@@ -4,8 +4,8 @@ from django.core.exceptions import ImproperlyConfigured
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-# DEBUG should be determined early and support common truthy values
-DEBUG = os.environ.get("DEBUG", "1").lower() in ("1", "true", "yes")
+# DEBUG should be determined early
+DEBUG = os.environ.get("DEBUG", "1") == "1"
 
 # SECRET_KEY must be provided via environment in production
 SECRET_KEY = os.environ.get("DJANGO_SECRET_KEY")
@@ -40,7 +40,6 @@ INSTALLED_APPS = [
     "django.contrib.staticfiles",
     "rest_framework",
     "rest_framework.authtoken",
-    "authentication",
     "apps.todos",
 ]
 
@@ -112,26 +111,8 @@ MEDIA_ROOT = BASE_DIR / "media"
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
-# Configure REST framework authentication classes. Use JWT in production; allow session/basic in DEBUG for convenience.
-if DEBUG:
-    DEFAULT_AUTH_CLASSES = [
-        "rest_framework.authentication.SessionAuthentication",
-        "rest_framework.authentication.BasicAuthentication",
-    ]
-else:
-    DEFAULT_AUTH_CLASSES = ["authentication.jwt_auth.JWTAuthentication"]
-
 REST_FRAMEWORK = {
-    "DEFAULT_AUTHENTICATION_CLASSES": DEFAULT_AUTH_CLASSES,
+    "DEFAULT_AUTHENTICATION_CLASSES": (
+        "authentication.jwt_auth.JWTAuthentication",
+    ),
 }
-
-# JWT-related settings (can be overridden via environment)
-JWT_SECRET = os.environ.get("JWT_SECRET", SECRET_KEY)
-JWT_EXPIRES_IN = int(os.environ.get("JWT_EXPIRES_IN", 3600))  # seconds
-JWT_ALLOWED_ALGORITHMS = os.environ.get("JWT_ALLOWED_ALGORITHMS", "HS256").split(",")
-
-# Simple safety check: if running in production ensure JWT_SECRET is not the unsafe dev fallback
-if not DEBUG and JWT_SECRET == "unsafe-dev-secret":
-    raise ImproperlyConfigured(
-        "JWT_SECRET must be set to a secure value in production and must not be the unsafe development secret."
-    )
