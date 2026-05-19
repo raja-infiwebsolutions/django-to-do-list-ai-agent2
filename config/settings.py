@@ -111,6 +111,19 @@ MEDIA_ROOT = BASE_DIR / "media"
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
+# Login redirect settings
+LOGIN_URL = "auth:login"
+LOGIN_REDIRECT_URL = "todos:list"
+
+# Configure REST framework authentication classes. Use JWT in production; allow session/basic in DEBUG for convenience.
+if DEBUG:
+    DEFAULT_AUTH_CLASSES = [
+        "rest_framework.authentication.SessionAuthentication",
+        "rest_framework.authentication.BasicAuthentication",
+    ]
+else:
+    DEFAULT_AUTH_CLASSES = ["authentication.jwt_auth.JWTAuthentication"]
+
 REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": (
         "authentication.jwt_auth.JWTAuthentication",

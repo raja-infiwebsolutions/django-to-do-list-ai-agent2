@@ -1,34 +1,102 @@
 <form method="post" novalidate id="todoForm">
   {% csrf_token %}
 
+  <!-- Title field -->
   <div class="mb-3">
-    <label for="id_title" class="form-label">Title</label>
-    <input type="text" name="title" class="form-control {% if form.title.errors %}is-invalid{% endif %}" id="id_title" placeholder="e.g. Buy groceries" value="{% if form.title.value %}{{ form.title.value }}{% elif todo %}{{ todo.title }}{% else %}{% endif %}" required>
+    <label for="{{ form.title.id_for_label }}" class="form-label">Title <span class="text-danger">*</span></label>
+    {{ form.title }}
     {% if form.title.errors %}
-      <div class="invalid-feedback">{{ form.title.errors|striptags }}</div>
+      <div class="invalid-feedback d-block">
+        {% for error in form.title.errors %}
+          <span>{{ error }}</span>
+        {% endfor %}
+      </div>
     {% else %}
-      <div class="form-text">Give your todo a short, descriptive title.</div>
+      <small class="form-text text-muted">Give your todo a short, descriptive title.</small>
     {% endif %}
   </div>
 
+  <!-- Description field -->
   <div class="mb-3">
-    <label for="id_description" class="form-label">Description</label>
-    <textarea name="description" class="form-control {% if form.description.errors %}is-invalid{% endif %}" id="id_description" rows="4" placeholder="Details about this todo">{% if form.description.value %}{{ form.description.value }}{% elif todo %}{{ todo.description }}{% else %}{% endif %}</textarea>
+    <label for="{{ form.description.id_for_label }}" class="form-label">Description</label>
+    {{ form.description }}
     {% if form.description.errors %}
-      <div class="invalid-feedback">{{ form.description.errors|striptags }}</div>
+      <div class="invalid-feedback d-block">
+        {% for error in form.description.errors %}
+          <span>{{ error }}</span>
+        {% endfor %}
+      </div>
+    {% else %}
+      <small class="form-text text-muted">Optional: Add more details about this todo.</small>
     {% endif %}
   </div>
 
-  <div class="mb-4 form-check">
-    <input type="checkbox" name="completed" class="form-check-input" id="id_completed" {% if form.completed.value %}checked{% elif todo and todo.completed %}checked{% endif %}>
-    <label class="form-check-label" for="id_completed">Mark as completed</label>
+  <div class="row">
+    <!-- Status field -->
+    <div class="col-md-6 mb-3">
+      <label for="{{ form.status.id_for_label }}" class="form-label">Status</label>
+      {{ form.status }}
+      {% if form.status.errors %}
+        <div class="invalid-feedback d-block">
+          {% for error in form.status.errors %}
+            <span>{{ error }}</span>
+          {% endfor %}
+        </div>
+      {% endif %}
+    </div>
+
+    <!-- Priority field -->
+    <div class="col-md-6 mb-3">
+      <label for="{{ form.priority.id_for_label }}" class="form-label">Priority</label>
+      {{ form.priority }}
+      {% if form.priority.errors %}
+        <div class="invalid-feedback d-block">
+          {% for error in form.priority.errors %}
+            <span>{{ error }}</span>
+          {% endfor %}
+        </div>
+      {% endif %}
+    </div>
   </div>
 
-  <div class="d-flex justify-content-between align-items-center">
-    <a href="{% url 'todos:list' %}" class="btn btn-secondary">Cancel</a>
+  <!-- Due date field -->
+  <div class="mb-3">
+    <label for="{{ form.due_date.id_for_label }}" class="form-label">Due Date</label>
+    {{ form.due_date }}
+    {% if form.due_date.errors %}
+      <div class="invalid-feedback d-block">
+        {% for error in form.due_date.errors %}
+          <span>{{ error }}</span>
+        {% endfor %}
+      </div>
+    {% endif %}
+  </div>
+
+  <!-- Completion checkbox -->
+  <div class="mb-4">
+    <div class="form-check">
+      {{ form.completed }}
+      <label class="form-check-label" for="{{ form.completed.id_for_label }}">
+        Mark as completed
+      </label>
+      {% if form.completed.errors %}
+        <div class="invalid-feedback d-block">
+          {% for error in form.completed.errors %}
+            <span>{{ error }}</span>
+          {% endfor %}
+        </div>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- Form buttons -->
+  <div class="d-flex justify-content-between align-items-center mt-4">
+    <a href="{% url 'todos:list' %}" class="btn btn-secondary">
+      <i class="bi bi-x-lg me-1"></i>Cancel
+    </a>
     <button type="submit" class="btn btn-primary" id="submitBtn">
-      <span class="spinner-border spinner-border-sm d-none" role="status" aria-hidden="true" id="submitSpinner"></span>
-      <span id="submitText">{% if todo %}Update{% else %}Create{% endif %}</span>
+      <span class="spinner-border spinner-border-sm d-none me-2" role="status" aria-hidden="true" id="submitSpinner"></span>
+      <span id="submitText">{% if todo %}Update Todo{% else %}Create Todo{% endif %}</span>
     </button>
   </div>
 </form>
