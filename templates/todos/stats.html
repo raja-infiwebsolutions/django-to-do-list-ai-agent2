@@ -57,8 +57,8 @@
       <div class="card-body">
         <h5 class="card-title">Progress</h5>
         <div class="progress" style="height: 25px;">
-          <div class="progress-bar bg-success" role="progressbar" style="width: {{ completed|add:"0"|mul:100|div:total }}%" aria-valuenow="{{ completed }}" aria-valuemin="0" aria-valuemax="{{ total }}">
-            {{ completed|add:"0"|mul:100|div:total|floatformat:0 }}%
+          <div class="progress-bar bg-success" role="progressbar" style="width: {% widthratio completed total 100 %}%" aria-valuenow="{{ completed }}" aria-valuemin="0" aria-valuemax="{{ total }}">
+            {% widthratio completed total 100 %}%
           </div>
         </div>
         <p class="text-muted small mt-2 mb-0">
